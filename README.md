@@ -1,150 +1,238 @@
-\# 🛡️ FraudShield
+FraudShield
+
+Intelligent Transaction Fraud Detection System
 
 
+About the Project
 
-\## Intelligent Transaction Fraud Detection System
+FraudShield is a machine learning project for detecting fraudulent financial transactions.
 
-
-
-FraudShield is a machine learning project that detects potentially fraudulent financial transactions using transaction-level features and an XGBoost classification model.
-
+The project takes transaction details as input and uses a trained XGBoost model to predict whether a transaction may be fraudulent.
 
 
-\##  Project Objective
+Project Objective
 
+• Detect potentially fraudulent transactions
+• Understand transaction patterns
+• Handle highly imbalanced fraud data
+• Train and compare machine learning models
+• Improve the model using hyperparameter tuning
+• Understand model predictions using SHAP
+• Create a simple Streamlit application for prediction
 
-
-The objective of FraudShield is to build an end-to-end fraud detection system that can:
-
-
-
-\- Analyze financial transactions
-
-\- Identify potentially fraudulent transactions
-
-\- Handle highly imbalanced fraud data
-
-\- Compare machine learning models
-
-\- Explain model predictions using SHAP
-
-\- Provide predictions through a Streamlit web application
-
-
-
-\##  Dataset
-
-
-
-The project uses the \*\*PaySim Synthetic Financial Dataset\*\*.
-
-
-
-The dataset contains transaction information such as:
-
-
-
-\- Transaction type
-
-\- Transaction amount
-
-\- Origin account balance
-
-\- Destination account balance
-
-\- Transaction step
-
-\- Fraud label
-
-
-
-The dataset is not included in this repository because of its large size.
-
-
-
-\##  Technologies Used
-
-
-
-\- Python
-
-\- Pandas
-
-\- NumPy
-
-\- Scikit-learn
-
-\- XGBoost
-
-\- SHAP
-
-\- Matplotlib
-
-\- Seaborn
-
-\- Joblib
-
-\- Streamlit
-
-\- Jupyter Notebook
-
-\- Git \& GitHub
-
-
-
-\##  Project Workflow
-
-
-
-```text
 
 Dataset
 
-&#x20;  ↓
+The project uses the PaySim Synthetic Financial Dataset.
 
-Data Understanding
+The dataset contains information such as:
 
-&#x20;  ↓
+• Transaction type
+• Transaction amount
+• Origin account balance
+• Destination account balance
+• Transaction step
+• Fraud label
 
-Data Cleaning
+The original dataset is not uploaded to GitHub because of its size.
 
-&#x20;  ↓
 
-Exploratory Data Analysis
+Tools and Technologies
 
-&#x20;  ↓
+• Python
+• Pandas
+• NumPy
+• Scikit-learn
+• XGBoost
+• SHAP
+• Matplotlib
+• Seaborn
+• Joblib
+• Streamlit
+• Jupyter Notebook
+• Git and GitHub
+
+
+Project Steps
+
+1. Data Understanding
+2. Data Cleaning
+3. Exploratory Data Analysis
+4. Feature Engineering
+5. Train/Test Split
+6. Handling Class Imbalance
+7. Model Training
+8. Model Evaluation
+9. Hyperparameter Tuning
+10. SHAP Analysis
+11. Model Saving
+12. Streamlit Application
+
 
 Feature Engineering
 
-&#x20;  ↓
+Two balance-based features were created:
 
-Train/Test Split
+• balance_diff_orig
+• balance_diff_dest
 
-&#x20;  ↓
+A destination transaction count feature was also created:
 
-Class Imbalance Handling
+• dest_transaction_count
 
-&#x20;  ↓
+Account IDs were not directly used as model features because they have very high cardinality.
 
-Model Training
 
-&#x20;  ↓
+Models Used
+
+Logistic Regression
+
+Used as the baseline model.
+
+Random Forest
+
+Used to test a tree-based model and understand nonlinear relationships.
+
+XGBoost
+
+Used as the main model for the final fraud detection system.
+
 
 Model Evaluation
 
-&#x20;  ↓
+Because fraud transactions are much fewer than normal transactions, accuracy alone is not enough.
 
-Hyperparameter Tuning
+The project uses:
 
-&#x20;  ↓
+• Precision
+• Recall
+• F1-score
+• Confusion Matrix
+• ROC-AUC
+• PR-AUC
+
+
+Final XGBoost Results
+
+The final XGBoost model was tested using a time-based validation approach.
+
+ROC-AUC: 1.00
+
+PR-AUC: 1.00
+
+Fraud Recall: 99.07%
+
+Fraud detected: 212 out of 214
+
+
+Important Note
+
+The dataset used in this project is synthetic.
+
+The very high model performance on this dataset does not mean that the same performance would be achieved on real banking transactions.
+
+Real-world fraud detection would require testing on real and different datasets, monitoring, and further validation.
+
 
 SHAP Explainability
 
-&#x20;  ↓
+SHAP was used to understand which features affected the model predictions.
 
-Model Saving
+Some important features included:
 
-&#x20;  ↓
+• step
+• balance_diff_orig
+• newbalanceOrig
+• Transaction type
+• oldbalanceOrg
+• amount
+
+SHAP helps to make the model predictions easier to understand.
+
 
 Streamlit Application
+
+A Streamlit application was created for testing the trained model.
+
+The application allows the user to enter transaction details and shows:
+
+• Fraud prediction
+• Fraud probability
+• Risk level
+• Transaction summary
+
+Risk levels used in the application:
+
+• LOW RISK — below 30%
+• MEDIUM RISK — 30% to below 70%
+• HIGH RISK — 70% or higher
+
+These are application display thresholds and are not validated banking decision thresholds.
+
+
+Project Structure
+
+FraudShield/
+│
+├── app/
+│   └── app.py
+│
+├── models/
+│   ├── fraud_xgb_model.pkl
+│   ├── type_encoder.pkl
+│   └── dest_counts.pkl
+│
+├── notebooks/
+│   └── 01_data_understanding.ipynb
+│
+├── .gitignore
+├── requirements.txt
+├── README.md
+└── Dataset.csv
+
+
+How to Run
+
+Install the required libraries:
+
+pip install -r requirements.txt
+
+
+Run the Streamlit application:
+
+streamlit run app/app.py
+
+
+Model Files
+
+The models folder contains:
+
+• fraud_xgb_model.pkl — trained XGBoost model
+• type_encoder.pkl — transaction type encoder
+• dest_counts.pkl — destination transaction count information
+
+
+Limitations
+
+• PaySim is a synthetic dataset
+• Results may not represent real-world fraud detection
+• More datasets are needed to test generalization
+• Real fraud systems need continuous monitoring
+• Risk thresholds need proper validation before real-world use
+
+
+Future Improvements
+
+• Test the model on other fraud datasets
+• Add more useful transaction features
+• Improve probability calibration
+• Add database integration
+• Build a better fraud monitoring dashboard
+• Deploy the application online
+• Add model monitoring and retraining
+
+
+Author
+
+Garvit Jain
 
