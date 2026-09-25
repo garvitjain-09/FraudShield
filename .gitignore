@@ -2,7 +2,6 @@
 Dataset.csv
 
 # Trained models
-models/*.pkl
 
 # Python cache
 __pycache__/

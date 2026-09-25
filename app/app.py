@@ -1,30 +1,23 @@
 import streamlit as st
 import pandas as pd
 import joblib
+from pathlib import Path
 
 
-# =========================
+# ==============================
 # Load Model and Encoder
-# =========================
+# ==============================
 
-MODEL_PATH = r"C:\Users\garvi\Downloads\FraudShield\models\fraud_xgb_model.pkl"
-ENCODER_PATH = r"C:\Users\garvi\Downloads\FraudShield\models\type_encoder.pkl"
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_DIR = BASE_DIR / "models"
+
+MODEL_PATH = MODEL_DIR / "fraud_xgb_model.pkl"
+ENCODER_PATH = MODEL_DIR / "type_encoder.pkl"
+DEST_COUNTS_PATH = MODEL_DIR / "dest_counts.pkl"
 
 model = joblib.load(MODEL_PATH)
 encoder = joblib.load(ENCODER_PATH)
-
-
-# =========================
-# Load Dataset
-# =========================
-
-DATA_PATH = r"C:\Users\garvi\Downloads\FraudShield\Dataset.csv"
-
-df = pd.read_csv(DATA_PATH)
-
-time_train = df[df["step"] < 76].copy()
-
-dest_counts = time_train["nameDest"].value_counts()
+dest_counts = joblib.load(DEST_COUNTS_PATH)
 
 
 # =========================
@@ -37,6 +30,8 @@ def predict_fraud(transaction):
 
     # Destination transaction count
     destination = new_df["nameDest"].iloc[0]
+
+    new_df["dest_transaction_count"] = dest_counts.get(destination, 0)
 
     new_df["dest_transaction_count"] = (
         dest_counts.get(destination, 0)
