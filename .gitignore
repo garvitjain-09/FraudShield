@@ -1,0 +1,19 @@
+# Dataset
+Dataset.csv
+
+# Trained models
+models/*.pkl
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environment
+venv/
+.venv/
+
+# Streamlit
+.streamlit/secrets.toml
