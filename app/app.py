@@ -15,9 +15,16 @@ MODEL_PATH = MODEL_DIR / "fraud_xgb_model.pkl"
 ENCODER_PATH = MODEL_DIR / "type_encoder.pkl"
 DEST_COUNTS_PATH = MODEL_DIR / "dest_counts.pkl"
 
-model = joblib.load(MODEL_PATH)
-encoder = joblib.load(ENCODER_PATH)
-dest_counts = joblib.load(DEST_COUNTS_PATH)
+@st.cache_resource
+def load_resources():
+    model = joblib.load(MODEL_PATH)
+    encoder = joblib.load(ENCODER_PATH)
+    dest_counts = joblib.load(DEST_COUNTS_PATH)
+
+    return model, encoder, dest_counts
+
+
+model, encoder, dest_counts = load_resources()
 
 
 # =========================
