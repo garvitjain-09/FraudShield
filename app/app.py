@@ -4,16 +4,13 @@ import joblib
 from pathlib import Path
 
 
-# ==============================
-# Load Model and Encoder
-# ==============================
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models"
 
 MODEL_PATH = MODEL_DIR / "fraud_xgb_model.pkl"
 ENCODER_PATH = MODEL_DIR / "type_encoder.pkl"
 DEST_COUNTS_PATH = MODEL_DIR / "dest_counts.pkl"
+
 
 @st.cache_resource
 def load_resources():
@@ -27,115 +24,89 @@ def load_resources():
 model, encoder, dest_counts = load_resources()
 
 
-# =========================
-# Prediction Function
-# =========================
-
 def predict_fraud(transaction):
 
-    new_df = pd.DataFrame([transaction])
+    df = pd.DataFrame([transaction])
 
-    # Destination transaction count
-    destination = new_df["nameDest"].iloc[0]
+    destination = df["nameDest"].iloc[0]
 
-    new_df["dest_transaction_count"] = dest_counts.get(destination, 0)
+    dest_count = dest_counts.get(destination, 0)
+    df["dest_transaction_count"] = dest_count
 
-    new_df["dest_transaction_count"] = (
-        dest_counts.get(destination, 0)
+    df["balance_diff_orig"] = (
+        df["oldbalanceOrg"]
+        - df["amount"]
+        - df["newbalanceOrig"]
     )
 
-    # Engineered features
-    new_df["balance_diff_orig"] = (
-        new_df["oldbalanceOrg"]
-        - new_df["amount"]
-        - new_df["newbalanceOrig"]
+    df["balance_diff_dest"] = (
+        df["oldbalanceDest"]
+        + df["amount"]
+        - df["newbalanceDest"]
     )
 
-    new_df["balance_diff_dest"] = (
-        new_df["oldbalanceDest"]
-        + new_df["amount"]
-        - new_df["newbalanceDest"]
-    )
-
-    # Remove account IDs
-    new_df = new_df.drop(
+    df.drop(
         columns=["nameOrig", "nameDest"],
+        inplace=True,
         errors="ignore"
     )
 
-    # Encode transaction type
-    type_encoded = encoder.transform(
-        new_df[["type"]]
-    )
+    encoded_type = encoder.transform(df[["type"]])
 
-    type_encoded_df = pd.DataFrame(
-        type_encoded,
+    encoded_df = pd.DataFrame(
+        encoded_type,
         columns=encoder.get_feature_names_out(["type"])
     )
 
-    # Remove original type
-    new_num = new_df.drop(columns=["type"])
+    df.drop(columns=["type"], inplace=True)
 
-    # Combine features
-    new_final = pd.concat(
+    df = pd.concat(
         [
-            new_num.reset_index(drop=True),
-            type_encoded_df.reset_index(drop=True)
+            df.reset_index(drop=True),
+            encoded_df.reset_index(drop=True)
         ],
         axis=1
     )
 
-    # Match training column order
-    new_final = new_final[
-        [
-            "step",
-            "amount",
-            "oldbalanceOrg",
-            "newbalanceOrig",
-            "oldbalanceDest",
-            "newbalanceDest",
-            "balance_diff_orig",
-            "balance_diff_dest",
-            "dest_transaction_count",
-            "type_CASH_IN",
-            "type_CASH_OUT",
-            "type_DEBIT",
-            "type_PAYMENT",
-            "type_TRANSFER"
-        ]
+    columns = [
+        "step",
+        "amount",
+        "oldbalanceOrg",
+        "newbalanceOrig",
+        "oldbalanceDest",
+        "newbalanceDest",
+        "balance_diff_orig",
+        "balance_diff_dest",
+        "dest_transaction_count",
+        "type_CASH_IN",
+        "type_CASH_OUT",
+        "type_DEBIT",
+        "type_PAYMENT",
+        "type_TRANSFER"
     ]
 
-    # Prediction
-    prediction = model.predict(new_final)[0]
+    df = df[columns]
 
-    probability = model.predict_proba(new_final)[0][1]
+    prediction = model.predict(df)[0]
+    probability = model.predict_proba(df)[0][1]
 
-    return prediction, probability
+    return prediction, probability, dest_count
 
-
-# =========================
-# Streamlit UI
-# =========================
 
 st.title("🛡️ FraudShield")
 
-st.subheader(
-    "Intelligent Transaction Fraud Detection System"
-)
+st.subheader("Intelligent Transaction Fraud Detection System")
 
 st.write(
-    "Enter transaction details below to predict "
-    "whether a transaction is potentially fraudulent."
+    "Enter transaction details below to check whether "
+    "the transaction is potentially fraudulent."
 )
 
-
-# =========================
-# Input Fields
-# =========================
 
 step = st.number_input(
     "Step",
     min_value=1,
+    max_value=95,
     value=76
 )
 
@@ -191,38 +162,130 @@ nameDest = st.text_input(
 )
 
 
-# =========================
-# Prediction Button
-# =========================
-
 if st.button("🔍 Predict Fraud"):
 
-    transaction = {
-        "step": step,
-        "type": transaction_type,
-        "amount": amount,
-        "nameOrig": nameOrig,
-        "nameDest": nameDest,
-        "oldbalanceOrg": oldbalanceOrg,
-        "newbalanceOrig": newbalanceOrig,
-        "oldbalanceDest": oldbalanceDest,
-        "newbalanceDest": newbalanceDest
-    }
+    error = None
 
-    prediction, probability = predict_fraud(transaction)
+    if amount <= 0:
 
-    st.write("### Prediction")
+        error = (
+            "Transaction amount must be greater than 0."
+        )
 
-    st.metric(
-        "Fraud Probability",
-        f"{probability:.2%}"
-    )
+    elif (
+        transaction_type
+        in ["CASH_OUT", "TRANSFER", "PAYMENT", "DEBIT"]
+        and amount > oldbalanceOrg
+    ):
 
-    if probability >= 0.70:
-        st.error("🚨 HIGH RISK - Potential Fraud Detected")
+        error = (
+            "Transaction amount cannot be greater than "
+            "the origin account balance."
+        )
 
-    elif probability >= 0.30:
-        st.warning("⚠️ MEDIUM RISK - Review Transaction")
+    elif not nameOrig.strip():
+
+        error = "Please enter the origin account ID."
+
+    elif not nameDest.strip():
+
+        error = "Please enter the destination account ID."
+
+    if error:
+
+        st.error("❌ " + error)
+
+        st.info(
+            "Please correct the transaction details "
+            "before running the prediction."
+        )
 
     else:
-        st.success("✅ LOW RISK - Transaction Appears Legitimate")
+
+        transaction = {
+            "step": step,
+            "type": transaction_type,
+            "amount": amount,
+            "nameOrig": nameOrig,
+            "nameDest": nameDest,
+            "oldbalanceOrg": oldbalanceOrg,
+            "newbalanceOrig": newbalanceOrig,
+            "oldbalanceDest": oldbalanceDest,
+            "newbalanceDest": newbalanceDest
+        }
+
+        prediction, probability, dest_count = predict_fraud(
+            transaction
+        )
+
+        st.write("### Transaction Summary")
+
+        st.write(
+            f"**Transaction Type:** {transaction_type}"
+        )
+
+        st.write(
+            f"**Amount:** ₹{amount:,.2f}"
+        )
+
+        st.write(
+            f"**Origin Account:** {nameOrig}"
+        )
+
+        st.write(
+            f"**Destination Account:** {nameDest}"
+        )
+
+        st.write(
+            f"**Origin Balance:** ₹{oldbalanceOrg:,.2f}"
+        )
+
+        st.write(
+            f"**Destination Balance:** ₹{oldbalanceDest:,.2f}"
+        )
+
+        if dest_count == 0:
+
+            st.info(
+                "Destination account was not found in the "
+                "training history. Transaction count was set to 0."
+            )
+
+        else:
+
+            st.write(
+                f"**Previous Destination Transactions:** {dest_count}"
+            )
+
+        st.write("### Prediction")
+
+        if prediction == 1:
+
+            st.error("🚨 Potential Fraud Detected")
+
+        else:
+
+            st.success("✅ Transaction Appears Legitimate")
+
+        st.metric(
+            "Fraud Probability",
+            f"{probability:.2%}"
+        )
+
+        if probability >= 0.70:
+
+            st.error(
+                "🚨 HIGH RISK - Potential Fraud Detected"
+            )
+
+        elif probability >= 0.30:
+
+            st.warning(
+                "⚠️ MEDIUM RISK - Review Transaction"
+            )
+
+        else:
+
+            st.success(
+                "✅ LOW RISK - Transaction Appears Legitimate"
+            )
